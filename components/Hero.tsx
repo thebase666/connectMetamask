@@ -3,15 +3,36 @@ import React, { useEffect } from "react";
 import StarBg from "./StarBg";
 import Web3 from "web3";
 import { useState } from "react";
-import { useSDK } from "@metamask/sdk-react";
+import { MetaMaskSDK } from "@metamask/sdk";
 
 function Hero() {
   const [account, setAccount] = useState<string>("");
   const [accountEthBalance, setAaccountEthBalance] = useState<string>();
   const [accountUsdtBalance, setAaccountUsdtBalance] = useState<string>();
-  // const [loading, setLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  const { sdk, connected, connecting, provider, chainId } = useSDK();
+  async function connect() {
+    if (typeof window.ethereum !== "undefined") {
+      try {
+        await ethereum.request({ method: "eth_requestAccounts" });
+        setIsConnected(true);
+
+        const MMSDK = new MetaMaskSDK({
+          dappMetadata: {
+            name: "Example Node.js Dapp",
+            url: window.location.host,
+          },
+          // Other options
+        });
+        const accounts = await MMSDK.connect();
+        setAccount(accounts?.[0]);
+      } catch (e) {
+        console.log(e);
+      }
+    } else {
+      setIsConnected(false);
+    }
+  }
 
   var usdtContractAbi = [
     {
@@ -406,19 +427,9 @@ function Hero() {
 
   var usdtContractAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
-  const connect = async () => {
-    console.log("connect");
-    try {
-      const accounts = await sdk?.connect();
-      setAccount(accounts?.[0]);
-    } catch (err) {
-      console.warn(`failed to connect..`, err);
-    }
-  };
-
   useEffect(() => {
     if (account === "") return;
-    if (connected === false) return;
+    if (isConnected === false) return;
     console.log("useEffect");
 
     // get eth balance and usdt balance
@@ -428,10 +439,11 @@ function Hero() {
     const web3 = new Web3(infura_url);
 
     const getEthBalance = async (accountAddress: string) => {
-      // const balance = await web3.eth.getBalance(accountAddress);
-      const balance = await web3.eth.getBalance(
-        "0x388C818CA8B9251b393131C08a736A67ccB19297"
-      );
+      const balance = await web3.eth.getBalance(accountAddress);
+      // const balance = await web3.eth.getBalance(
+      //   "0x388C818CA8B9251b393131C08a736A67ccB19297"
+      // );
+
       console.log("balance", balance);
       const ether = await web3.utils.fromWei(balance, "ether");
       console.log("ether", ether);
@@ -445,11 +457,11 @@ function Hero() {
     );
 
     const getUsdtBalance = async (accountAddress: string) => {
-      // let result = await usdtContract.methods.balanceOf(accountAddress).call();
+      let result = await usdtContract.methods.balanceOf(accountAddress).call();
 
-      let result = await usdtContract.methods
-        .balanceOf("0xcf1D463591D4e4C06A3e26c7638f24a5Cd0bA36D")
-        .call();
+      // let result = await usdtContract.methods
+      //   .balanceOf("0x388C818CA8B9251b393131C08a736A67ccB19297")
+      //   .call();
 
       const usdt = await web3.utils.fromWei(result, "mwei");
       console.log("usdt", usdt);
@@ -459,7 +471,7 @@ function Hero() {
 
     getEthBalance(account);
     getUsdtBalance(account);
-  }, [connected, account]);
+  }, [isConnected, account]);
 
   return (
     <section id='hero' className='snap-center overflow-hidden '>
@@ -470,15 +482,17 @@ function Hero() {
         <div className='bg-[#210967]/40 p-2 space-y-3 sm:w-[400px] sm:p-4 lg:w-[500px] lg:p-8 lg:space-y-5 flex flex-col items-start justify-center rounded-xl '>
           <div className='w-full flex items-center justify-center'>
             <button
-              onClick={connect}
+              onClick={() => {
+                connect();
+              }}
               className='px-8 py-2 my-2 md:px-16  md:my-5 font-bold text-white transition duration-150 bg-gradient-to-r from-[#E0AD6B] to-[#E54FF9] rounded-full shadow-md hover:shadow-xl active:scale-90 '
             >
               Connect Metamask
             </button>
           </div>
-          {connected && (
+          {isConnected && (
             <div className='flex flex-col text-left'>
-              <p>{chainId && `Connected chain: ${chainId}`}</p>
+              {/* <p>{chainId && `Connected chain: ${chainId}`}</p> */}
               <p className=''>
                 {account !== "" && `Connected account: ${account}`}
               </p>
